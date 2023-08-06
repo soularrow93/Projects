@@ -1,0 +1,31 @@
+{
+  "manifest_version": 2,
+  "name": "ChatGPT Files Uploader",
+  "version": "1.0",
+  "description": "A Firefox extension to upload large files to chat.openai.com using the OpenAI API.",
+  "permissions": [
+    "activeTab",
+    "contextMenus",
+    "https://api.openai.com/*"
+  ],
+  "browser_action": {
+    "default_popup": "popup.html"
+  },
+  "icons": {
+    "48": "icons/icon.png",
+    "128": "icons/icon-128.png"
+  },
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.openai.com/*"],
+      "js": ["content.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    "content.js"
+  ]
+}
