@@ -1,31 +1,44 @@
 {
   "manifest_version": 2,
-  "name": "ChatGPT Files Uploader",
-  "version": "1.0",
-  "description": "A Firefox extension to upload large files to chat.openai.com using the OpenAI API.",
-  "permissions": [
-    "activeTab",
-    "contextMenus",
-    "https://api.openai.com/*"
-  ],
-  "browser_action": {
-    "default_popup": "popup.html"
-  },
+  "name": "Microsoft Rewards Bot",
+  "version": "2.24.2.1",
   "icons": {
-    "48": "icons/icon.png",
-    "128": "icons/icon-128.png"
-  },
+    "16": "img/bingRwLogo@1x.png",
+    "24": "img/bingRwLogo@1.5x.png",
+    "32": "img/bingRwLogo@2x.png",
+    "48": "img/bingRwLogo@3x.png",
+    "128": "img/bingRwLogo@8x.png"
+  },  
+  "description": "A Chrome extension for Microsoft Rewards that automatically clears PC, mobile and EDGE search quests and displays daily point countdown.",
+
   "background": {
-    "scripts": ["background.js"],
-    "persistent": false
+    "persistent": true,
+    "scripts": [
+      "status/DailyQuest.js",
+      "status/DailyRewardStatus.js",
+      "quest/searchQuest.js",
+      "quest/quizDailyQuest.js",
+      "googleTrend.js",
+      "utility.js",
+      "badge.js",
+      "exception.js",
+      "background.js",
+      "test.js"
+    ]
   },
-  "content_scripts": [
-    {
-      "matches": ["*://*.openai.com/*"],
-      "js": ["content.js"]
-    }
-  ],
-  "web_accessible_resources": [
-    "content.js"
+
+  "browser_action": {
+    "default_title": "Microsoft Rewards Bot",
+    "default_popup": "popup/popup.html"
+  },
+
+  "permissions": [
+    "https://trends.google.com/trends/*",
+    "https://*.microsoft.com/*",
+    "https://*.bing.com/*",
+    "webRequest",
+    "webRequestBlocking",
+    "storage",
+    "notifications"
   ]
 }

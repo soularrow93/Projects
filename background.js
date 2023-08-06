@@ -1,23 +1,165 @@
-// Add background tasks here, if needed.
-// Listen for the context menu item click event
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === 'uploadContextMenuItem') {
-    // Implement your logic to handle the context menu item click event here
-    // For example, you can display a file upload dialog or start the upload process directly
-    // You'll need to access the active tab's DOM and interact with the file input and other elements
-  }
+'use strict';
+
+function onExtensionLoad() {
+    setBadge(new GreyBadge());
+    loadSavedSettings();
+    getDeveloperSettings();
+    setDelayedInitialisation(5000);
+}
+
+function loadSavedSettings() {
+    chrome.storage.sync.get({
+        compatibilityMode: false,
+        pcUaOverrideEnable: false,
+        mbUaOverrideEnable: false,
+        pcUaOverrideValue: '',
+        mbUaOverrideValue: '',
+    }, function (options) {
+        _compatibilityMode = options.compatibilityMode;
+        _pcUaOverrideEnable = options.pcUaOverrideEnable;
+        _mbUaOverrideEnable = options.mbUaOverrideEnable;
+        _pcUaOverrideValue = options.pcUaOverrideValue;
+        _mbUaOverrideValue = options.mbUaOverrideValue;
+    });
+}
+
+async function getDeveloperSettings() {
+    const devJson = chrome.runtime.getURL('developer.json');
+    const fetchProm = await fetch(devJson, {method: 'GET'}).then((response) => {
+        return response.json();
+    }).then((json) => {
+        developer = json;
+        console.log('Developer mode enabled.');
+        console.log(developer);
+    }).catch((ex) => {
+        if (ex.name == 'TypeError') {
+            return;
+        }
+        throw ex;
+    });
+}
+
+// -----------------------------
+// Work
+// -----------------------------
+function setDelayedInitialisation(ms) {
+    setTimeout(
+        function () {
+            initialize();
+        },
+        ms,
+    );
+}
+
+function initialize() {
+    doBackgroundWork();
+
+    // check every 120 minutes for possible new promotion
+    setInterval(
+        function () {
+            doBackgroundWork();
+        },
+        WORKER_ACTIVATION_INTERVAL,
+    );
+}
+
+async function doBackgroundWork() {
+    if (searchQuest.jobStatus == STATUS_BUSY || userDailyStatus.jobStatus == STATUS_BUSY) {
+        return;
+    }
+
+    await waitTillOnline();
+
+    setBadge(new BusyBadge());
+
+    checkNewDay();
+    await checkDailyRewardStatus();
+
+    if (isCurrentBadge('busy')) {
+        setBadge(new DoneBadge());
+    }
+}
+
+async function waitTillOnline() {
+    while (!navigator.onLine) {
+        await setTimeoutAsync(WAIT_FOR_ONLINE_TIMEOUT);
+    }
+}
+
+async function setTimeoutAsync(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function checkDailyRewardStatus() {
+    // update status
+    let result;
+    try {
+        result = await userDailyStatus.update();
+    } catch (ex) {
+        handleException(ex);
+    }
+    if (!result || !userDailyStatus.summary.isValid) {
+        setBadge(new ErrorBadge());
+        return;
+    }
+
+    await doSearchQuests();
+
+    checkQuizAndDaily();
+}
+
+async function doSearchQuests() {
+    if (userDailyStatus.summary.isCompleted) {
+        return;
+    }
+
+    if (!userDailyStatus.pcSearchStatus.isCompleted || !userDailyStatus.mbSearchStatus.isCompleted) {
+        try {
+            await searchQuest.doWork(userDailyStatus);
+        } catch (ex) {
+            handleException(ex);
+        }
+    }
+}
+
+const WORKER_ACTIVATION_INTERVAL = 7200000; // Interval at which automatic background works are carried out, in ms.
+const WAIT_FOR_ONLINE_TIMEOUT = 60000;
+
+const googleTrend = new GoogleTrend();
+const userDailyStatus = new DailyRewardStatus();
+const searchQuest = new SearchQuest(googleTrend);
+let developer = false;
+let userAgents;
+let _compatibilityMode;
+let _pcUaOverrideEnable;
+let _mbUaOverrideEnable;
+let _pcUaOverrideValue;
+let _mbUaOverrideValue;
+
+chrome.runtime.onInstalled.addListener(function (details) {
+    if (details.reason == 'install') {
+
+    }
+    if (details.reason == 'update') {
+
+    }
 });
 
-// Create a context menu item for the extension
-chrome.contextMenus.create({
-  id: 'uploadContextMenuItem',
-  title: 'Upload File to ChatGPT',
-  contexts: ['all'],
+chrome.runtime.onMessage.addListener(function (request) {
+    if (request.action == 'checkStatus') {
+        doBackgroundWork();
+    }
+    if (request.action == 'updateOptions') {
+        _compatibilityMode = request.content.compatibilityMode;
+        _pcUaOverrideEnable = request.content.pcUaOverrideEnable;
+        _mbUaOverrideEnable = request.content.mbUaOverrideEnable;
+        _pcUaOverrideValue = request.content.pcUaOverrideValue;
+        _mbUaOverrideValue = request.content.mbUaOverrideValue;
+        return;
+    }
+    if (request.action == 'copyDebugInfo') {
+        getDebugInfo();
+    }
 });
 
-// Handle the extension button click event
-chrome.browserAction.onClicked.addListener((tab) => {
-  // Implement your logic for the extension button click event here
-  // For example, you can display a file upload dialog or start the upload process directly
-  // You'll need to access the active tab's DOM and interact with the file input and other elements
-});
+onExtensionLoad();
